@@ -3,7 +3,6 @@ import pandas as pd
 from bs4 import BeautifulSoup
 import urllib.parse
 import json
-import time
 
 # Page Configuration
 st.set_page_config(
@@ -20,6 +19,11 @@ st.markdown("""
     }
     .stTextArea textarea {
         font-family: monospace;
+    }
+    .stButton button {
+        width: 100%;
+        background-color: #3b82f6;
+        color: white;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -97,56 +101,60 @@ with col1:
     st.subheader("HTML Input")
     html_input = st.text_area(
         "Paste <table>, <tbody>, or <tr> blocks here...",
-        height=500,
+        height=450,
         placeholder="<tr id='tag-123'>..."
     )
+    
+    # Process Button
+    process_btn = st.button("🚀 Process HTML Content", type="primary")
 
 with col2:
     st.subheader("Extracted Data")
     
-    if html_input:
-        # Use a status container for the "In Progress" message
-        with st.status("Processing HTML content...", expanded=True) as status:
-            data = extract_wp_data(html_input)
+    # Only run logic if button is clicked
+    if process_btn:
+        if html_input:
+            with st.spinner("Analyzing HTML..."):
+                data = extract_wp_data(html_input)
+            
             if data:
-                status.update(label="Extraction complete!", state="complete", expanded=False)
+                df = pd.DataFrame(data)
+                st.success(f"Successfully extracted {len(df)} items!")
+                
+                # Display table
+                st.dataframe(df, use_container_width=True, hide_index=True)
+
+                # Action Buttons
+                st.divider()
+                
+                # Download as TSV for Google Sheets
+                tsv = df.to_csv(index=False, sep='\t')
+                st.download_button(
+                    label="📥 Download for Google Sheets (TSV)",
+                    data=tsv,
+                    file_name="wp_tags.tsv",
+                    mime="text/tab-separated-values",
+                    use_container_width=True
+                )
+
+                # Download as JSON
+                json_data = json.dumps(data, indent=4)
+                st.download_button(
+                    label="📄 Download JSON List",
+                    data=json_data,
+                    file_name="wp_tags.json",
+                    mime="application/json",
+                    use_container_width=True
+                )
+                
+                # Copy-friendly text area
+                st.text_area("Copy-paste Rows (TSV format):", value=tsv, height=150)
             else:
-                status.update(label="No valid data found.", state="error", expanded=False)
-        
-        if data:
-            df = pd.DataFrame(data)
-            st.success(f"Found {len(df)} items!")
-            
-            # Display table
-            st.dataframe(df, use_container_width=True, hide_index=True)
-
-            # Action Buttons
-            st.divider()
-            
-            # Download as TSV for Google Sheets
-            tsv = df.to_csv(index=False, sep='\t')
-            st.download_button(
-                label="📥 Download for Google Sheets (TSV)",
-                data=tsv,
-                file_name="wp_tags.tsv",
-                mime="text/tab-separated-values",
-                use_container_width=True
-            )
-
-            # Download as JSON
-            json_data = json.dumps(data, indent=4)
-            st.download_button(
-                label="📄 Download JSON List",
-                data=json_data,
-                file_name="wp_tags.json",
-                mime="application/json",
-                use_container_width=True
-            )
-            
-            # Copy-friendly text area for quick grabbing
-            st.text_area("Copy-paste Rows (TSV format):", value=tsv, height=150)
+                st.error("No valid WordPress rows found in the input. Please check your HTML.")
+        else:
+            st.warning("Please paste some HTML before clicking process.")
     else:
-        st.info("Waiting for valid WordPress HTML input...")
+        st.info("Paste your HTML in the left column and click the button to begin.")
 
 # Footer
 st.markdown("---")
