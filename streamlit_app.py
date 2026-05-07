@@ -3,6 +3,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 import urllib.parse
 import json
+import time
 
 # Page Configuration
 st.set_page_config(
@@ -102,40 +103,48 @@ with col1:
 
 with col2:
     st.subheader("Extracted Data")
-    data = extract_wp_data(html_input)
     
-    if data:
-        df = pd.DataFrame(data)
-        st.success(f"Found {len(df)} items!")
+    if html_input:
+        # Use a status container for the "In Progress" message
+        with st.status("Processing HTML content...", expanded=True) as status:
+            data = extract_wp_data(html_input)
+            if data:
+                status.update(label="Extraction complete!", state="complete", expanded=False)
+            else:
+                status.update(label="No valid data found.", state="error", expanded=False)
         
-        # Display table
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        if data:
+            df = pd.DataFrame(data)
+            st.success(f"Found {len(df)} items!")
+            
+            # Display table
+            st.dataframe(df, use_container_width=True, hide_index=True)
 
-        # Action Buttons
-        st.divider()
-        
-        # Download as TSV for Google Sheets
-        tsv = df.to_csv(index=False, sep='\t')
-        st.download_button(
-            label="📥 Download for Google Sheets (TSV)",
-            data=tsv,
-            file_name="wp_tags.tsv",
-            mime="text/tab-separated-values",
-            use_container_width=True
-        )
+            # Action Buttons
+            st.divider()
+            
+            # Download as TSV for Google Sheets
+            tsv = df.to_csv(index=False, sep='\t')
+            st.download_button(
+                label="📥 Download for Google Sheets (TSV)",
+                data=tsv,
+                file_name="wp_tags.tsv",
+                mime="text/tab-separated-values",
+                use_container_width=True
+            )
 
-        # Download as JSON
-        json_data = json.dumps(data, indent=4)
-        st.download_button(
-            label="📄 Download JSON List",
-            data=json_data,
-            file_name="wp_tags.json",
-            mime="application/json",
-            use_container_width=True
-        )
-        
-        # Copy-friendly text area for quick grabbing
-        st.text_area("Copy-paste Rows (TSV format):", value=tsv, height=150)
+            # Download as JSON
+            json_data = json.dumps(data, indent=4)
+            st.download_button(
+                label="📄 Download JSON List",
+                data=json_data,
+                file_name="wp_tags.json",
+                mime="application/json",
+                use_container_width=True
+            )
+            
+            # Copy-friendly text area for quick grabbing
+            st.text_area("Copy-paste Rows (TSV format):", value=tsv, height=150)
     else:
         st.info("Waiting for valid WordPress HTML input...")
 
